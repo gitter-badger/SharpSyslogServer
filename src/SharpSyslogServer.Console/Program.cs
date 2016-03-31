@@ -13,15 +13,26 @@ namespace SharpSyslogServer.Console
             var source = new CancellationTokenSource();
             var sysLog = new UdpSyslogServer(new ConsoleSyslogMessageHandler());
 
-            var exitKeyTask = PressEscToExit();
-
             try
             {
                 var sysLogTask = Task.Run(() => sysLog.Start(source.Token), source.Token);
-                Task.WaitAny(sysLogTask, exitKeyTask);
 
-                source.Cancel();
-                sysLogTask.Wait(TimeSpan.FromSeconds(3)); // throw syslogServer errors if any
+                SystemConsole.WriteLine("Press ESC to exit");
+
+                do
+                {
+                    while (true)
+                    {
+                        if (sysLogTask.IsFaulted)
+                            sysLogTask.Wait(); // throw syslogServer errors
+
+                        if (!SystemConsole.KeyAvailable)
+                            break;
+
+                        Task.Delay(1000).Wait();
+                    }
+
+                } while (SystemConsole.ReadKey(true).Key != ConsoleKey.Escape);
 
                 return 0;
             }
@@ -33,15 +44,5 @@ namespace SharpSyslogServer.Console
             }
         }
 
-        private static Task PressEscToExit()
-        {
-            return Task.Run(() =>
-            {
-                SystemConsole.WriteLine("Press ESC to exit");
-                while (SystemConsole.ReadKey(true).Key != ConsoleKey.Escape)
-                {
-                }
-            });
-        }
     }
 }
